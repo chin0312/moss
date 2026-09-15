@@ -606,6 +606,7 @@ describe("Merkl claim Receipt evidence", () => {
     changes.forEach((change, index) => {
       expect(leafChange(receipt.changes[index])).toBe(change);
     });
+    expect(receiptMovesAssetsOut(receipt, ACCOUNT)).toBe(false);
   });
 
   it("rejects forged emitters, wrong actors, endpoints, amounts, and zero claims", async () => {
@@ -628,6 +629,18 @@ describe("Merkl claim Receipt evidence", () => {
     expect(() => registry.parseReceipt(capability, [claimedEvent(), transferEvent(OTHER)])).toThrow(
       /sender/,
     );
+    // `risk: []` is a claim the Receipt can refute: a Transfer leaving the acting
+    // account never parses, and the no-outbound check itself sees it.
+    expect(() =>
+      registry.parseReceipt(capability, [claimedEvent(), transferEvent(ACCOUNT, OTHER)]),
+    ).toThrow(/sender/);
+    const outbound: ReceiptResult = {
+      kind: "receipt",
+      outcome: null,
+      text: "outbound",
+      changes: [{ kind: "change", change: transferEvent(ACCOUNT, OTHER), data: null, text: "out" }],
+    };
+    expect(receiptMovesAssetsOut(outbound, ACCOUNT)).toBe(true);
     expect(() =>
       registry.parseReceipt(capability, [
         claimedEvent(),
